@@ -14,6 +14,7 @@ def test_calculate_contractions():
             "Low": [98, 80, 88, 70],
             "Swing_High": [True, False, True, False],
             "Swing_Low": [False, True, False, True],
+            "In_Base": [True, True, True, True],
         }
     )
 

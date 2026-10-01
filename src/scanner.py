@@ -58,11 +58,21 @@ def scan_stock(
         breakout_multiplier=breakout_multiplier,
     )
 
-    contraction_depths = (
-        result["Contraction_Depth"]
-        .dropna()
-        .tolist()
-    )
+    latest = result.iloc[-1]
+
+    if latest["In_Base"] and pd.notna(latest["Base_Start"]):
+        active_base = result[
+            (result["Date"] >= latest["Base_Start"])
+            & result["In_Base"]
+        ]
+
+        contraction_depths = (
+            active_base["Contraction_Depth"]
+            .dropna()
+            .tolist()
+        )
+    else:
+        contraction_depths = []
 
     vcp_result = score_vcp(
         contraction_depths,

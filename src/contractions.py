@@ -7,7 +7,8 @@ def calculate_contractions(
     df: pd.DataFrame,
 ) -> pd.DataFrame:
     """
-    Calculate pullback depth between consecutive swing highs and lows.
+    Calculate pullback depth between consecutive swing highs and lows
+    that occur inside the same base.
 
     Contraction depth is measured as:
 
@@ -18,14 +19,17 @@ def calculate_contractions(
 
     result["Contraction_Depth"] = pd.NA
 
+    base_mask = result["In_Base"]
+
     swing_high_indices = result.index[
-        result["Swing_High"]
+        result["Swing_High"] & base_mask
     ].tolist()
 
     for high_index in swing_high_indices:
         following_lows = result.index[
             (result.index > high_index)
             & result["Swing_Low"]
+            & base_mask
         ]
 
         if len(following_lows) == 0:
