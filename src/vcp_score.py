@@ -6,11 +6,14 @@ import pandas as pd
 def score_vcp(
     contraction_depths: list[float],
     final_contraction_max_depth: float = 0.10,
+    atr_pcts: list[float] | None = None,
+    relative_volumes: list[float] | None = None,
 ) -> dict:
     """
-    Calculate an explainable VCP score from contraction depths.
+    Calculate an explainable VCP score from contraction structure,
+    volatility, and volume behavior.
 
-    Returns a score from 0 to 100 plus the individual components.
+    Returns a score from 0 to 100 plus individual components.
     """
 
     if len(contraction_depths) < 2:
@@ -19,6 +22,8 @@ def score_vcp(
             "contraction_score": 0,
             "tightening_score": 0,
             "final_contraction_score": 0,
+            "volatility_score": 0,
+            "volume_score": 0,
         }
 
     contraction_score = min(
@@ -26,14 +31,13 @@ def score_vcp(
         1.0,
     ) * 30
 
-    tightening_pairs = 0
-
-    for previous, current in zip(
-        contraction_depths,
-        contraction_depths[1:],
-    ):
-        if current <= previous:
-            tightening_pairs += 1
+    tightening_pairs = sum(
+        current <= previous
+        for previous, current in zip(
+            contraction_depths,
+            contraction_depths[1:],
+        )
+    )
 
     total_pairs = len(contraction_depths) - 1
 
@@ -48,8 +52,7 @@ def score_vcp(
     else:
         final_contraction_score = max(
             0,
-            40
-            * (
+            40 * (
                 1
                 - (
                     final_depth
@@ -58,10 +61,22 @@ def score_vcp(
             ),
         )
 
+    volatility_score = 0
+    if atr_pcts and len(atr_pcts) >= 2:
+        if atr_pcts[-1] <= atr_pcts[0]:
+            volatility_score = 5
+
+    volume_score = 0
+    if relative_volumes and len(relative_volumes) >= 2:
+        if relative_volumes[-1] <= relative_volumes[0]:
+            volume_score = 5
+
     score = round(
         contraction_score
         + tightening_score
         + final_contraction_score
+        + volatility_score
+        + volume_score
     )
 
     return {
@@ -71,4 +86,6 @@ def score_vcp(
         "final_contraction_score": round(
             final_contraction_score
         ),
+        "volatility_score": volatility_score,
+        "volume_score": volume_score,
     }

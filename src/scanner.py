@@ -77,6 +77,8 @@ def scan_stock(
     vcp_result = score_vcp(
         contraction_depths,
         final_contraction_max_depth=final_contraction_max_depth,
+        atr_pcts=active_base["ATR_Pct"].dropna().tolist(),
+        relative_volumes=active_base["RelativeVolume"].dropna().tolist(),
     )
 
     latest = result.iloc[-1]
