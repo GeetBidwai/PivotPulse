@@ -59,6 +59,7 @@ def scan_stock(
     )
 
     latest = result.iloc[-1]
+    active_base = result.iloc[0:0]
 
     if latest["In_Base"] and pd.notna(latest["Base_Start"]):
         active_base = result[
