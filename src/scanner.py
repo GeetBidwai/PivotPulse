@@ -15,7 +15,7 @@ from src.vcp_score import score_vcp
 
 
 def scan_stock(df: pd.DataFrame) -> dict:
-    """Run the initial PivotPulse VCP scanning pipeline."""
+    """Run the PivotPulse VCP scanning pipeline."""
 
     config = load_config()
 
@@ -31,7 +31,9 @@ def scan_stock(df: pd.DataFrame) -> dict:
         result,
         fast_sma=config["trend"]["fast_sma"],
         slow_sma=config["trend"]["slow_sma"],
-        max_distance_from_52w_high=config["trend"]["max_distance_from_52w_high"],
+        max_distance_from_52w_high=config["trend"][
+            "max_distance_from_52w_high"
+        ],
     )
 
     result = detect_swings(
@@ -58,6 +60,7 @@ def scan_stock(df: pd.DataFrame) -> dict:
     )
 
     latest = result.iloc[-1]
+
     active_base = result.iloc[0:0]
 
     if latest["In_Base"] and pd.notna(latest["Base_Start"]):
@@ -76,15 +79,30 @@ def scan_stock(df: pd.DataFrame) -> dict:
 
     vcp_result = score_vcp(
         contraction_depths,
-        final_contraction_max_depth=config["vcp"]["final_contraction_max_depth"],
+        final_contraction_max_depth=config["vcp"][
+            "final_contraction_max_depth"
+        ],
         atr_pcts=active_base["ATR_Pct"].dropna().tolist(),
         relative_volumes=active_base["RelativeVolume"].dropna().tolist(),
     )
 
+    score = vcp_result["score"]
+
+    candidate_score = config["vcp"]["candidate_score"]
+    strong_score = config["vcp"]["strong_score"]
+
+    if score >= strong_score:
+        classification = "strong"
+    elif score >= candidate_score:
+        classification = "candidate"
+    else:
+        classification = "none"
+
     latest = result.iloc[-1]
 
     return {
-        "score": vcp_result["score"],
+        "score": score,
+        "classification": classification,
         "contraction_score": vcp_result["contraction_score"],
         "tightening_score": vcp_result["tightening_score"],
         "final_contraction_score": vcp_result[
