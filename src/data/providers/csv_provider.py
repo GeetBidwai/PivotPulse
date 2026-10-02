@@ -1,5 +1,3 @@
-"""CSV-based market-data provider for PivotPulse."""
-
 from datetime import date
 from pathlib import Path
 
@@ -10,11 +8,7 @@ from src.data_loader import validate_ohlcv
 
 
 class CSVMarketDataProvider(MarketDataProvider):
-    """Load market data from a local CSV file."""
-
     def __init__(self, data_directory: str | Path):
-        """Initialize the provider with a CSV data directory."""
-
         self.data_directory = Path(data_directory)
 
     def get_daily_data(
@@ -23,7 +17,6 @@ class CSVMarketDataProvider(MarketDataProvider):
         start_date: date,
         end_date: date,
     ) -> pd.DataFrame:
-        """Load and filter daily OHLCV data for a symbol."""
 
         file_path = self.data_directory / f"{symbol}.csv"
 
@@ -44,8 +37,7 @@ class CSVMarketDataProvider(MarketDataProvider):
         ]
 
         missing_columns = [
-            column
-            for column in required_columns
+            column for column in required_columns
             if column not in df.columns
         ]
 
@@ -58,6 +50,11 @@ class CSVMarketDataProvider(MarketDataProvider):
 
         start = pd.Timestamp(start_date)
         end = pd.Timestamp(end_date)
+
+        if df["Date"].dt.tz is not None:
+            timezone = df["Date"].dt.tz
+            start = start.tz_localize(timezone)
+            end = end.tz_localize(timezone)
 
         df = df[
             (df["Date"] >= start)
