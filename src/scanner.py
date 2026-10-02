@@ -2,6 +2,8 @@
 
 import pandas as pd
 
+from src.config import load_config
+
 from src.base_detector import detect_base
 from src.breakout import detect_breakouts
 from src.contractions import calculate_contractions
@@ -26,27 +28,29 @@ def scan_stock(
 ) -> dict:
     """Run the initial PivotPulse VCP scanning pipeline."""
 
+    config = load_config()
+
     result = add_indicators(
         df,
-        fast_sma=fast_sma,
-        slow_sma=slow_sma,
-        atr_period=atr_period,
-        volume_period=volume_period,
+        fast_sma=config["trend"]["fast_sma"],
+        slow_sma=config["trend"]["slow_sma"],
+        atr_period=config["volatility"]["atr_period"],
+        volume_period=config["volume"]["average_period"],
     )
 
     result = qualify_trend(
         result,
-        fast_sma=fast_sma,
-        slow_sma=slow_sma,
-        max_distance_from_52w_high=max_distance_from_52w_high,
+        fast_sma=config["trend"]["fast_sma"],
+        slow_sma=config["trend"]["slow_sma"],
+        max_distance_from_52w_high=config["trend"]["max_distance_from_52w_high"],
     )
 
     result = detect_swings(result)
 
     result = detect_base(
         result,
-        min_duration=base_min_duration,
-        max_duration=base_max_duration,
+        min_duration=config["base"]["min_duration_days"],
+        max_duration=config["base"]["max_duration_days"],
     )
 
     result = calculate_contractions(result)
@@ -55,7 +59,7 @@ def scan_stock(
 
     result = detect_breakouts(
         result,
-        breakout_multiplier=breakout_multiplier,
+        breakout_multiplier=config["volume"]["breakout_multiplier"],
     )
 
     latest = result.iloc[-1]
@@ -77,7 +81,7 @@ def scan_stock(
 
     vcp_result = score_vcp(
         contraction_depths,
-        final_contraction_max_depth=final_contraction_max_depth,
+        final_contraction_max_depth=config["vcp"]["final_contraction_max_depth"],
         atr_pcts=active_base["ATR_Pct"].dropna().tolist(),
         relative_volumes=active_base["RelativeVolume"].dropna().tolist(),
     )
