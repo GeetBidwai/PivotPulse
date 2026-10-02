@@ -63,12 +63,33 @@ def score_vcp(
 
     volatility_score = 0
     if atr_pcts and len(atr_pcts) >= 2:
-        if atr_pcts[-1] <= atr_pcts[0]:
+        atr_midpoint = len(atr_pcts) // 2
+
+        first_half_atr = sum(
+            atr_pcts[:atr_midpoint]
+        ) / atr_midpoint
+
+        second_half_atr = sum(
+            atr_pcts[atr_midpoint:]
+        ) / len(atr_pcts[atr_midpoint:])
+
+        if second_half_atr <= first_half_atr:
             volatility_score = 5
+
 
     volume_score = 0
     if relative_volumes and len(relative_volumes) >= 2:
-        if relative_volumes[-1] <= relative_volumes[0]:
+        volume_midpoint = len(relative_volumes) // 2
+
+        first_half_volume = sum(
+            relative_volumes[:volume_midpoint]
+        ) / volume_midpoint
+
+        second_half_volume = sum(
+            relative_volumes[volume_midpoint:]
+        ) / len(relative_volumes[volume_midpoint:])
+
+        if second_half_volume <= first_half_volume:
             volume_score = 5
 
     score = round(

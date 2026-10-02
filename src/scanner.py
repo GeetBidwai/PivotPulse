@@ -90,6 +90,8 @@ def scan_stock(
         "final_contraction_score": vcp_result[
             "final_contraction_score"
         ],
+        "volatility_score": vcp_result["volatility_score"],
+        "volume_score": vcp_result["volume_score"],
         "trend_qualified": bool(
             latest["Trend_Qualified"]
         ),
