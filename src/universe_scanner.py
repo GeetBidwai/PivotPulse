@@ -5,6 +5,7 @@ from pathlib import Path
 
 from src.config import load_config
 from src.data.providers.csv_provider import CSVMarketDataProvider
+from src.scanner import scan_stock
 from src.universe import passes_universe_filter
 
 
@@ -13,14 +14,14 @@ def scan_universe(
     data_directory: str | Path,
     start_date: date,
     end_date: date,
-) -> list[str]:
-    """Return symbols that pass the configured universe filters."""
+) -> dict[str, dict]:
+    """Scan qualifying stocks through the PivotPulse VCP scanner."""
 
     config = load_config()
 
     provider = CSVMarketDataProvider(data_directory)
 
-    passed_symbols = []
+    results = {}
 
     for symbol in symbols:
         try:
@@ -30,7 +31,7 @@ def scan_universe(
                 end_date=end_date,
             )
 
-            if passes_universe_filter(
+            if not passes_universe_filter(
                 df,
                 min_price=config["universe"]["min_price"],
                 min_average_turnover=config["universe"][
@@ -38,9 +39,17 @@ def scan_universe(
                 ],
                 average_period=config["volume"]["average_period"],
             ):
-                passed_symbols.append(symbol)
+                continue
+
+            scan_result = scan_stock(df)
+
+            results[symbol] = {
+                key: value
+                for key, value in scan_result.items()
+                if key != "data"
+            }
 
         except (FileNotFoundError, ValueError):
             continue
 
-    return passed_symbols
+    return results

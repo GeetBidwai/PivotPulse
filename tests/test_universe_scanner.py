@@ -23,6 +23,9 @@ def test_scan_universe(monkeypatch):
     passing_df = pd.DataFrame(
         {
             "Date": pd.date_range("2026-01-01", periods=20),
+            "Open": [99.0] * 20,
+            "High": [105.0] * 20,
+            "Low": [95.0] * 20,
             "Close": [100.0] * 20,
             "Volume": [1_000_000] * 20,
         }
@@ -31,6 +34,9 @@ def test_scan_universe(monkeypatch):
     failing_df = pd.DataFrame(
         {
             "Date": pd.date_range("2026-01-01", periods=20),
+            "Open": [39.0] * 20,
+            "High": [42.0] * 20,
+            "Low": [38.0] * 20,
             "Close": [40.0] * 20,
             "Volume": [1_000_000] * 20,
         }
@@ -53,4 +59,5 @@ def test_scan_universe(monkeypatch):
         end_date=date(2026, 1, 31),
     )
 
-    assert result == ["PASS"]
+    assert "PASS" in result
+    assert "FAIL" not in result
