@@ -18,6 +18,12 @@ base:
   min_contractions: 2
   max_contractions: 4
 
+swings:
+  lookback: 3
+
+pivot:
+  lookback: 20
+
 volatility:
   atr_period: 14
 

@@ -34,7 +34,10 @@ def scan_stock(df: pd.DataFrame) -> dict:
         max_distance_from_52w_high=config["trend"]["max_distance_from_52w_high"],
     )
 
-    result = detect_swings(result)
+    result = detect_swings(
+        result,
+        lookback=config["swings"]["lookback"],
+    )
 
     result = detect_base(
         result,
@@ -44,7 +47,10 @@ def scan_stock(df: pd.DataFrame) -> dict:
 
     result = calculate_contractions(result)
 
-    result = detect_pivot(result)
+    result = detect_pivot(
+        result,
+        lookback=config["pivot"]["lookback"],
+    )
 
     result = detect_breakouts(
         result,
