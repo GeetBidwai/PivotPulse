@@ -1,7 +1,5 @@
 """VCP scoring logic for PivotPulse."""
 
-import pandas as pd
-
 
 def score_vcp(
     contraction_depths: list[float],
@@ -29,7 +27,7 @@ def score_vcp(
     contraction_score = min(
         len(contraction_depths) / 4,
         1.0,
-    ) * 30
+    ) * 25
 
     tightening_pairs = sum(
         current <= previous
@@ -43,16 +41,16 @@ def score_vcp(
 
     tightening_score = (
         tightening_pairs / total_pairs
-    ) * 30
+    ) * 25
 
     final_depth = contraction_depths[-1]
 
     if final_depth <= final_contraction_max_depth:
-        final_contraction_score = 40
+        final_contraction_score = 35
     else:
         final_contraction_score = max(
             0,
-            40 * (
+            35 * (
                 1
                 - (
                     final_depth
@@ -62,6 +60,7 @@ def score_vcp(
         )
 
     volatility_score = 0
+
     if atr_pcts and len(atr_pcts) >= 2:
         atr_midpoint = len(atr_pcts) // 2
 
@@ -74,10 +73,10 @@ def score_vcp(
         ) / len(atr_pcts[atr_midpoint:])
 
         if second_half_atr <= first_half_atr:
-            volatility_score = 5
-
+            volatility_score = 7.5
 
     volume_score = 0
+
     if relative_volumes and len(relative_volumes) >= 2:
         volume_midpoint = len(relative_volumes) // 2
 
@@ -90,7 +89,7 @@ def score_vcp(
         ) / len(relative_volumes[volume_midpoint:])
 
         if second_half_volume <= first_half_volume:
-            volume_score = 5
+            volume_score = 7.5
 
     score = round(
         contraction_score
