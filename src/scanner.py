@@ -14,18 +14,7 @@ from src.trend import qualify_trend
 from src.vcp_score import score_vcp
 
 
-def scan_stock(
-    df: pd.DataFrame,
-    fast_sma: int = 50,
-    slow_sma: int = 200,
-    atr_period: int = 14,
-    volume_period: int = 20,
-    base_min_duration: int = 15,
-    base_max_duration: int = 120,
-    breakout_multiplier: float = 1.5,
-    final_contraction_max_depth: float = 0.10,
-    max_distance_from_52w_high: float = 0.15,
-) -> dict:
+def scan_stock(df: pd.DataFrame) -> dict:
     """Run the initial PivotPulse VCP scanning pipeline."""
 
     config = load_config()
