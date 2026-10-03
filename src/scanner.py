@@ -83,6 +83,8 @@ def scan_stock(df: pd.DataFrame) -> dict:
         final_contraction_max_depth=config["vcp"][
             "final_contraction_max_depth"
         ],
+        min_contractions=config["base"]["min_contractions"],
+        max_contractions=config["base"]["max_contractions"],
         atr_pcts=active_base["ATR_Pct"].dropna().tolist(),
         relative_volumes=active_base["RelativeVolume"].dropna().tolist(),
     )

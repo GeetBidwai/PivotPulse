@@ -104,3 +104,53 @@ def test_scanner_passes_base_configuration(monkeypatch):
     assert captured["max_net_decline"] == (
         config["base"]["max_net_decline"]
     )
+
+
+def test_scanner_passes_contraction_limits(monkeypatch):
+    """Verify that YAML contraction limits reach the VCP scorer."""
+
+    import src.scanner as scanner
+
+    df = make_sample_data()
+
+    captured = {}
+
+    original_score_vcp = scanner.score_vcp
+
+    def spy_score_vcp(
+        contraction_depths,
+        final_contraction_max_depth,
+        min_contractions,
+        max_contractions,
+        atr_pcts,
+        relative_volumes,
+    ):
+        captured["min_contractions"] = min_contractions
+        captured["max_contractions"] = max_contractions
+
+        return original_score_vcp(
+            contraction_depths,
+            final_contraction_max_depth=final_contraction_max_depth,
+            min_contractions=min_contractions,
+            max_contractions=max_contractions,
+            atr_pcts=atr_pcts,
+            relative_volumes=relative_volumes,
+        )
+
+    monkeypatch.setattr(
+        scanner,
+        "score_vcp",
+        spy_score_vcp,
+    )
+
+    config = scanner.load_config()
+
+    scanner.scan_stock(df)
+
+    assert captured["min_contractions"] == (
+        config["base"]["min_contractions"]
+    )
+
+    assert captured["max_contractions"] == (
+        config["base"]["max_contractions"]
+    )

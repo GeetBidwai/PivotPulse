@@ -4,6 +4,8 @@
 def score_vcp(
     contraction_depths: list[float],
     final_contraction_max_depth: float = 0.10,
+    min_contractions: int = 2,
+    max_contractions: int = 4,
     atr_pcts: list[float] | None = None,
     relative_volumes: list[float] | None = None,
 ) -> dict:
@@ -14,7 +16,12 @@ def score_vcp(
     Returns a score from 0 to 100 plus individual components.
     """
 
-    if len(contraction_depths) < 2:
+    contraction_count = len(contraction_depths)
+
+    if (
+        contraction_count < min_contractions
+        or contraction_count > max_contractions
+    ):
         return {
             "score": 0,
             "contraction_score": 0,
@@ -25,7 +32,7 @@ def score_vcp(
         }
 
     contraction_score = min(
-        len(contraction_depths) / 4,
+        contraction_count / max_contractions,
         1.0,
     ) * 25
 
@@ -37,7 +44,7 @@ def score_vcp(
         )
     )
 
-    total_pairs = len(contraction_depths) - 1
+    total_pairs = contraction_count - 1
 
     tightening_score = (
         tightening_pairs / total_pairs
