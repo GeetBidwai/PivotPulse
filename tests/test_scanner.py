@@ -24,6 +24,56 @@ def make_sample_data():
     )
 
 
+def make_synthetic_vcp_data():
+    """Create a controlled dataset containing one continuous VCP base."""
+
+    dates = pd.date_range(
+        "2025-01-01",
+        periods=248,
+        freq="D",
+    )
+
+    close = [100.0] * 248
+
+    # Established uptrend before the base.
+    for i in range(50):
+        close[170 + i] = 130 + (i * 0.4)
+
+    # One continuous VCP base with progressively smaller contractions.
+    base_prices = [
+        150, 148, 146, 144, 142,
+        145, 148, 146, 143, 140,
+        143, 146, 144, 142, 141,
+        143, 145, 144, 143, 142,
+        144, 146, 145, 144, 143,
+        145, 147, 146, 145, 144,
+        146, 148, 147, 146, 145,
+        147, 149, 148, 147, 146,
+    ]
+
+    close[210:210 + len(base_prices)] = base_prices
+
+    # Keep the latest observation inside the VCP base.
+    close = close[:248]
+
+    high = [price + 1 for price in close]
+    low = [price - 1 for price in close]
+    open_prices = close.copy()
+    volume = [1_000_000] * len(close)
+
+
+    return pd.DataFrame(
+        {
+            "Date": dates,
+            "Open": open_prices,
+            "High": high,
+            "Low": low,
+            "Close": close,
+            "Volume": volume,
+        }
+    )
+
+
 def test_scan_stock_returns_expected_structure():
     """Verify the scanner returns the expected fields."""
 
@@ -154,3 +204,49 @@ def test_scanner_passes_contraction_limits(monkeypatch):
     assert captured["max_contractions"] == (
         config["base"]["max_contractions"]
     )
+
+
+def test_scanner_processes_synthetic_vcp_data():
+    """Verify the scanner can process a controlled VCP-like dataset."""
+
+    df = make_synthetic_vcp_data()
+
+    result = scan_stock(df)
+
+    assert isinstance(result["score"], int)
+    assert 0 <= result["score"] <= 100
+    assert result["classification"] in {
+        "none",
+        "candidate",
+        "strong",
+    }
+    assert result["data"]["Contraction_Depth"].notna().any()
+
+def test_classify_signal():
+    """Verify combined VCP setup signal classification."""
+
+    from src.scanner import classify_signal
+
+    assert classify_signal(
+        score=83,
+        trend_qualified=True,
+        in_base=True,
+        breakout=False,
+        candidate_score=70,
+    ) == "setup"
+
+    assert classify_signal(
+        score=83,
+        trend_qualified=True,
+        in_base=True,
+        breakout=True,
+        candidate_score=70,
+    ) == "breakout"
+
+    assert classify_signal(
+        score=83,
+        trend_qualified=False,
+        in_base=True,
+        breakout=False,
+        candidate_score=70,
+    ) == "none"
