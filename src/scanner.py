@@ -45,6 +45,7 @@ def scan_stock(df: pd.DataFrame) -> dict:
         result,
         min_duration=config["base"]["min_duration_days"],
         max_duration=config["base"]["max_duration_days"],
+        max_net_decline=config["base"]["max_net_decline"],
     )
 
     result = calculate_contractions(result)

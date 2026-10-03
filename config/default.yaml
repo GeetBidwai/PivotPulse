@@ -17,6 +17,7 @@ base:
   max_duration_days: 120
   min_contractions: 2
   max_contractions: 4
+  max_net_decline: 0.15
 
 swings:
   lookback: 3

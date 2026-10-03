@@ -8,12 +8,16 @@ def detect_base(
     min_duration: int = 15,
     max_duration: int = 120,
     max_range: float = 0.30,
+    max_net_decline: float = 0.15,
 ) -> pd.DataFrame:
     """
     Identify potential consolidation periods.
 
-    A base starts when a controlled price range can be established
-    and remains valid while the range stays within max_range.
+    A base must:
+    - Last within the configured duration range.
+    - Stay within the maximum price range.
+    - Avoid an excessive net decline from the starting close.
+    - Finish in the upper half of its price range.
 
     The detector tracks the most recent base window rather than
     independently evaluating every rolling window.
@@ -30,10 +34,16 @@ def detect_base(
     if max_range <= 0:
         raise ValueError("max_range must be greater than 0.")
 
+    if not 0 <= max_net_decline <= 1:
+        raise ValueError(
+            "max_net_decline must be between 0 and 1."
+        )
+
     result = df.copy()
 
     result["Base_Range"] = pd.NA
     result["In_Base"] = False
+
     if "Date" in result.columns:
         result["Base_Start"] = pd.Series(
             pd.NaT,
@@ -77,7 +87,26 @@ def detect_base(
             (base_high - base_low) / base_low
         )
 
-        if base_range > max_range:
+        starting_close = result.iloc[base_start]["Close"]
+        current_close = result.iloc[i]["Close"]
+
+        net_decline = (
+            (starting_close - current_close)
+            / starting_close
+        )
+
+        range_position = (
+            (current_close - base_low)
+            / (base_high - base_low)
+            if base_high > base_low
+            else 0
+        )
+
+        if (
+            base_range > max_range
+            or net_decline > max_net_decline
+            or range_position < 0.50
+        ):
             base_start = None
             continue
 
