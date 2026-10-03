@@ -14,6 +14,8 @@ def calculate_contractions(
     before another swing high occurs.
 
     Both the swing high and swing low must belong to the same base.
+    A contraction is valid only when the swing low is below the
+    swing high.
     """
 
     result = df.copy()
@@ -42,7 +44,7 @@ def calculate_contractions(
                 high_price = result.loc[high_index, "High"]
                 low_price = result.loc[index, "Low"]
 
-                if high_price > 0:
+                if 0 < low_price < high_price:
                     result.loc[index, "Contraction_Depth"] = (
                         (high_price - low_price) / high_price
                     )
