@@ -158,3 +158,54 @@ def test_scan_stocks_returns_all_historical_signals(monkeypatch):
         91,
         82,
     ]
+
+
+def test_prepare_scan_date_range_adds_warm_up_history():
+    """The market-data request includes history before the display period."""
+
+    market_start, market_end = scanner.prepare_scan_date_range(
+        date(2025, 6, 1),
+        date(2025, 6, 20),
+        today=date(2025, 6, 21),
+    )
+
+    assert market_start == date(2024, 4, 27)
+    assert market_end == date(2025, 6, 20)
+
+
+def test_prepare_scan_date_range_caps_today_and_holidays():
+    """Incomplete, weekend, and known holiday dates use the prior trading day."""
+
+    _, today_end = scanner.prepare_scan_date_range(
+        date(2025, 1, 1),
+        date(2025, 1, 27),
+        today=date(2025, 1, 27),
+    )
+    _, holiday_end = scanner.prepare_scan_date_range(
+        date(2025, 1, 1),
+        date(2025, 2, 26),
+        today=date(2025, 2, 27),
+    )
+
+    assert today_end == date(2025, 1, 24)
+    assert holiday_end == date(2025, 2, 25)
+
+
+def test_filter_signals_to_display_range_keeps_only_selected_dates():
+    """Warm-up-period signals are not displayed to the user."""
+
+    results = pd.DataFrame(
+        {
+            "symbol": ["TEST", "TEST", "TEST"],
+            "date": pd.to_datetime(["2025-01-31", "2025-02-01", "2025-02-28"]),
+            "score": [80, 85, 90],
+        }
+    )
+
+    filtered = scanner.filter_signals_to_display_range(
+        results,
+        date(2025, 2, 1),
+        date(2025, 2, 27),
+    )
+
+    assert filtered["date"].tolist() == [pd.Timestamp("2025-02-01")]
