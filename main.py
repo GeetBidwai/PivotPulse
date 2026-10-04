@@ -1,63 +1,50 @@
-from pathlib import Path
+from datetime import date
 
-from src.config import load_config
-from src.data_loader import load_ohlcv_csv
-from src.indicators import add_indicators
-
-
-PROJECT_ROOT = Path(__file__).resolve().parent
+from src.multi_stock_scanner import scan_stocks
 
 
 def main():
-    config = load_config()
+    print("=" * 70)
+    print("PivotPulse - VCP Scanner")
+    print("=" * 70)
 
-    print("=" * 60)
-    print("PivotPulse - Stage 1A")
-    print("=" * 60)
+    symbols = [
+        "RELIANCE",
+        "INFY",
+        "TCS",
+        "HDFCBANK",
+        "ICICIBANK",
+    ]
 
-    print(f"Project: {config['project']['name']}")
-    print(f"Timeframe: {config['project']['timeframe']}")
+    print("\nScanning:")
+    print(", ".join(symbols))
 
-    data_file = (
-        PROJECT_ROOT
-        / "data"
-        / "raw"
-        / "sample.csv"
+    results = scan_stocks(
+        symbols=symbols,
+        start_date=date(2025, 1, 1),
+        end_date=date.today(),
     )
 
-    print(f"\nLoading: {data_file}")
+    print("\n" + "=" * 70)
+    print("VCP SIGNALS")
+    print("=" * 70)
 
-    df = load_ohlcv_csv(data_file)
+    if results.empty:
+        print("No VCP signals found.")
+        return
 
-    print(f"Rows loaded: {len(df):,}")
-    print(f"First date: {df['Date'].min()}")
-    print(f"Last date:  {df['Date'].max()}")
+    display_columns = [
+        "symbol",
+        "date",
+        "score",
+        "classification",
+        "signal",
+    ]
 
-    df = add_indicators(
-        df,
-        fast_sma=config["trend"]["fast_sma"],
-        slow_sma=config["trend"]["slow_sma"],
-        atr_period=config["volatility"]["atr_period"],
-        volume_period=config["volume"]["average_period"],
-    )
-
-    print("\nIndicators calculated:")
     print(
-        df[
-            [
-                "Date",
-                "Close",
-                "SMA_50",
-                "SMA_200",
-                "52W_High",
-                "ATR_14",
-                "ATR_Pct",
-                "RelativeVolume",
-            ]
-        ].tail(10).to_string(index=False)
+        results[display_columns]
+        .to_string(index=False)
     )
-
-    print("\nPivotPulse Stage 1A complete.")
 
 
 if __name__ == "__main__":

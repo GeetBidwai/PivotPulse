@@ -9,13 +9,25 @@ from src.data.providers.upstox_provider import UpstoxMarketDataProvider
 from src.scanner import scan_historical
 
 
+OUTPUT_COLUMNS = [
+    "symbol",
+    "date",
+    "score",
+    "classification",
+    "signal",
+    "trend_qualified",
+    "in_base",
+    "breakout",
+]
+
+
 def scan_stocks(
     symbols: list[str],
     start_date: date,
     end_date: date,
     provider=None,
 ) -> pd.DataFrame:
-    """Scan multiple NSE stocks using historical market data."""
+    """Scan multiple NSE stocks and return frontend-ready signals."""
 
     instruments = load_nse_equity_instruments()
 
@@ -47,30 +59,41 @@ def scan_stocks(
                 historical["Signal"] != "none"
             ]
 
-            if signals.empty:
-                continue
-
-            latest = signals.iloc[-1]
-
-            results.append(
-                {
-                    "symbol": symbol,
-                    "date": latest["Date"],
-                    "score": latest["VCP_Score"],
-                    "classification": latest[
-                        "VCP_Classification"
-                    ],
-                    "signal": latest["Signal"],
-                    "trend_qualified": latest[
-                        "Trend_Qualified"
-                    ],
-                    "in_base": latest["In_Base"],
-                    "breakout": latest["Breakout"],
-                }
-            )
+            for _, row in signals.iterrows():
+                results.append(
+                    {
+                        "symbol": symbol,
+                        "date": row["Date"],
+                        "score": row["VCP_Score"],
+                        "classification": row[
+                            "VCP_Classification"
+                        ],
+                        "signal": row["Signal"],
+                        "trend_qualified": row[
+                            "Trend_Qualified"
+                        ],
+                        "in_base": row["In_Base"],
+                        "breakout": row["Breakout"],
+                    }
+                )
 
         except (RuntimeError, ValueError) as error:
             print(f"{symbol}: {error}")
             continue
 
-    return pd.DataFrame(results)
+    result = pd.DataFrame(
+        results,
+        columns=OUTPUT_COLUMNS,
+    )
+
+    if not result.empty:
+        result = (
+            result
+            .sort_values(
+                ["date", "score"],
+                ascending=[False, False],
+            )
+            .reset_index(drop=True)
+        )
+
+    return result

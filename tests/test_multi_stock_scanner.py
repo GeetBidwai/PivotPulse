@@ -69,3 +69,92 @@ def test_scan_stocks_accepts_custom_provider(monkeypatch):
     )
 
     assert isinstance(result, pd.DataFrame)
+
+
+def test_scan_stocks_returns_all_historical_signals(monkeypatch):
+    """Verify all non-none historical signals are returned."""
+
+    instruments = pd.DataFrame(
+        {
+            "trading_symbol": ["TEST"],
+            "name": ["TEST COMPANY"],
+            "instrument_key": ["NSE_EQ|TEST"],
+            "isin": ["TESTISIN"],
+        }
+    )
+
+    monkeypatch.setattr(
+        scanner,
+        "load_nse_equity_instruments",
+        lambda: instruments,
+    )
+
+    historical = pd.DataFrame(
+        {
+            "Date": pd.to_datetime(
+                [
+                    "2025-01-01",
+                    "2025-01-02",
+                    "2025-01-03",
+                ]
+            ),
+            "VCP_Score": [0, 82, 91],
+            "VCP_Classification": [
+                "none",
+                "strong",
+                "strong",
+            ],
+            "Signal": [
+                "none",
+                "setup",
+                "breakout",
+            ],
+            "Trend_Qualified": [
+                False,
+                True,
+                True,
+            ],
+            "In_Base": [
+                False,
+                True,
+                False,
+            ],
+            "Breakout": [
+                False,
+                False,
+                True,
+            ],
+        }
+    )
+
+    monkeypatch.setattr(
+        scanner,
+        "scan_historical",
+        lambda df: historical,
+    )
+
+    provider = FakeProvider(make_sample_data())
+
+    result = scanner.scan_stocks(
+        symbols=["TEST"],
+        start_date=date(2025, 1, 1),
+        end_date=date(2025, 9, 30),
+        provider=provider,
+    )
+
+    assert len(result) == 2
+
+    assert result["symbol"].tolist() == [
+        "TEST",
+        "TEST",
+    ]
+
+    assert result["signal"].tolist() == [
+        "breakout",
+        "setup",
+    ]
+
+    assert result["score"].tolist() == [
+        91,
+        82,
+    ]
