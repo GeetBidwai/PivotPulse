@@ -6,6 +6,7 @@ import pandas as pd
 
 from src.data.nse_instruments import load_nse_equity_instruments
 from src.data.providers.upstox_provider import UpstoxMarketDataProvider
+from src.early_vcp import analyze_early_vcp
 from src.scanner import scan_historical
 
 
@@ -15,12 +16,24 @@ OUTPUT_COLUMNS = [
     "score",
     "classification",
     "signal",
+    "status",
     "trend_qualified",
     "in_base",
     "breakout",
+    "current_price",
+    "pivot",
+    "support",
+    "atr_percent",
+    "volume_contracting",
+    "price_contracting",
+    "pullbacks_percent",
+    "reason",
 ]
 
+
 WARM_UP_CALENDAR_DAYS = 400
+MIN_HISTORY_ROWS = 252
+
 
 NSE_MARKET_HOLIDAYS = frozenset(
     {
@@ -131,7 +144,7 @@ def scan_stocks(
     end_date: date,
     provider=None,
 ) -> pd.DataFrame:
-    """Scan multiple NSE stocks for signals in the selected period."""
+    """Scan multiple NSE stocks and return VCP signals."""
 
     instruments = load_nse_equity_instruments()
 
@@ -166,6 +179,63 @@ def scan_stocks(
 
             completed_symbols += 1
 
+            # -------------------------------------------------
+            # Early VCP path for newly listed stocks
+            # -------------------------------------------------
+
+            if len(df) < MIN_HISTORY_ROWS:
+                early_result = analyze_early_vcp(df)
+
+                latest_date = (
+                    df["Date"].iloc[-1]
+                    if not df.empty
+                    else pd.NaT
+                )
+
+                results.append(
+                    {
+                        "symbol": symbol,
+                        "date": latest_date,
+                        "score": early_result["confidence"],
+                        "classification": "early_vcp",
+                        "signal": early_result["signal"],
+                        "status": "early_vcp",
+                        "trend_qualified": early_result[
+                            "trend_ok"
+                        ],
+                        "in_base": early_result[
+                            "price_contracting"
+                        ],
+                        "breakout": early_result[
+                            "breakout"
+                        ],
+                        "current_price": early_result[
+                            "current_price"
+                        ],
+                        "pivot": early_result["pivot"],
+                        "support": early_result["support"],
+                        "atr_percent": early_result[
+                            "atr_percent"
+                        ],
+                        "volume_contracting": early_result[
+                            "volume_contracting"
+                        ],
+                        "price_contracting": early_result[
+                            "price_contracting"
+                        ],
+                        "pullbacks_percent": early_result.get(
+                            "pullbacks_percent", []
+                        ),
+                        "reason": early_result["reason"],
+                    }
+                )
+
+                continue
+
+            # -------------------------------------------------
+            # Full VCP path
+            # -------------------------------------------------
+
             historical = scan_historical(df)
 
             signals = historical[
@@ -182,11 +252,20 @@ def scan_stocks(
                             "VCP_Classification"
                         ],
                         "signal": row["Signal"],
+                        "status": "scanned",
                         "trend_qualified": row[
                             "Trend_Qualified"
                         ],
                         "in_base": row["In_Base"],
                         "breakout": row["Breakout"],
+                        "current_price": pd.NA,
+                        "pivot": pd.NA,
+                        "support": pd.NA,
+                        "atr_percent": pd.NA,
+                        "volume_contracting": pd.NA,
+                        "price_contracting": pd.NA,
+                        "pullbacks_percent": pd.NA,
+                        "reason": pd.NA,
                     }
                 )
 
@@ -206,18 +285,37 @@ def scan_stocks(
         columns=OUTPUT_COLUMNS,
     )
 
-    result = filter_signals_to_display_range(
-        result,
-        start_date,
-        end_date,
-    )
-
     if not result.empty:
+        valid_signals = result[
+            result["status"].isin(
+                ["scanned", "early_vcp"]
+            )
+        ]
+
+        insufficient_history = result[
+            result["status"] == "insufficient_history"
+        ]
+
+        valid_signals = filter_signals_to_display_range(
+            valid_signals,
+            start_date,
+            end_date,
+        )
+
+        result = pd.concat(
+            [
+                valid_signals,
+                insufficient_history,
+            ],
+            ignore_index=True,
+        )
+
         result = (
             result
             .sort_values(
                 ["date", "score"],
                 ascending=[False, False],
+                na_position="last",
             )
             .reset_index(drop=True)
         )
