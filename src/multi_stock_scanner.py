@@ -21,6 +21,8 @@ OUTPUT_COLUMNS = [
     "in_base",
     "breakout",
     "current_price",
+    "latest_price",
+    "latest_price_date",
     "pivot",
     "support",
     "atr_percent",
@@ -177,6 +179,16 @@ def scan_stocks(
                 end_date=scan_end_date,
             )
 
+            if df.empty:
+                errors.append(f"{symbol}: no market data returned")
+                continue
+
+            df = df.sort_values("Date").reset_index(drop=True)
+
+            latest_market_date = df["Date"].iloc[-1]
+            latest_market_price = df["Close"].iloc[-1]
+
+
             completed_symbols += 1
 
             # -------------------------------------------------
@@ -200,6 +212,8 @@ def scan_stocks(
                         "classification": "early_vcp",
                         "signal": early_result["signal"],
                         "status": "early_vcp",
+                        "latest_price": latest_market_price,
+                        "latest_price_date": latest_market_date,
                         "trend_qualified": early_result[
                             "trend_ok"
                         ],
@@ -236,11 +250,14 @@ def scan_stocks(
             # Full VCP path
             # -------------------------------------------------
 
+
             historical = scan_historical(df)
 
-            signals = historical[
-                historical["Signal"] != "none"
-            ]
+
+            # Keep qualifying signals, but retain the calculated indicators.
+            signals = historical.loc[
+                historical["Signal"].str.lower() != "none"
+            ].copy()
 
             for _, row in signals.iterrows():
                 results.append(
@@ -248,26 +265,56 @@ def scan_stocks(
                         "symbol": symbol,
                         "date": row["Date"],
                         "score": row["VCP_Score"],
-                        "classification": row[
-                            "VCP_Classification"
-                        ],
-                        "signal": row["Signal"],
+                        "classification": row["VCP_Classification"],
+                        "signal": str(row["Signal"]).lower(),
                         "status": "scanned",
-                        "trend_qualified": row[
-                            "Trend_Qualified"
-                        ],
+                        "trend_qualified": row["Trend_Qualified"],
                         "in_base": row["In_Base"],
                         "breakout": row["Breakout"],
+                        "current_price": row.get("Close", pd.NA),
+                        "latest_price": latest_market_price,
+                        "latest_price_date": latest_market_date,
+                        "pivot": row.get("Pivot", pd.NA),
+                        "support": row.get("Support", pd.NA),
+                        "atr_percent": row.get("ATR_Pct", pd.NA),
+                        "volume_contracting": pd.NA,
+                        "price_contracting": pd.NA,
+                        "pullbacks_percent": pd.NA,
+                        "reason": (
+                            f"Trend qualified: {bool(row['Trend_Qualified'])}; "
+                            f"base identified: {bool(row['In_Base'])}; "
+                            f"breakout: {bool(row['Breakout'])}."
+                        ),
+                    }
+                )
+
+
+            if signals.empty:
+                results.append(
+                    {
+                        "symbol": symbol,
+                        "date": latest_market_date,
+                        "score": pd.NA,
+                        "classification": "none",
+                        "signal": "NONE",
+                        "status": "no_signal",
+                        "trend_qualified": pd.NA,
+                        "in_base": pd.NA,
+                        "breakout": pd.NA,
                         "current_price": pd.NA,
+                        "latest_price": latest_market_price,
+                        "latest_price_date": latest_market_date,
                         "pivot": pd.NA,
                         "support": pd.NA,
                         "atr_percent": pd.NA,
                         "volume_contracting": pd.NA,
                         "price_contracting": pd.NA,
                         "pullbacks_percent": pd.NA,
-                        "reason": pd.NA,
+                        "reason": "No qualifying VCP signal in the scanned history.",
                     }
                 )
+
+           
 
         except (RuntimeError, ValueError) as error:
             errors.append(f"{symbol}: {error}")
@@ -288,7 +335,7 @@ def scan_stocks(
     if not result.empty:
         valid_signals = result[
             result["status"].isin(
-                ["scanned", "early_vcp"]
+                ["scanned", "early_vcp","no_signal"]
             )
         ]
 
